@@ -9,7 +9,7 @@ p1im5 = cv2.imread('./images/p1im5.png')
 p1im6 = cv2.imread('./images/p1im6.png')
 
 
-def findHistogram(sourceImage):
+def findHistogram(sourceImage) :
     ycrcb = cv2.cvtColor(sourceImage, cv2.COLOR_BGR2YCR_CB)
     channels = cv2.split(ycrcb)
     image = channels[0]
@@ -45,11 +45,23 @@ def findHistogram(sourceImage):
     return result
 
 
-def getGaussian (s, x):
+def getGaussian(s, x) :
     gaussian = 1/ (np.sqrt (2 * np.pi ) * s) * np.e ** ( - ( x**2 / (2 * s ** 2)))
     return gaussian
 
+def correctGamma(sourceImage, gamma) :
+    height = sourceImage.shape[0]
+    width = sourceImage.shape[1]
 
-p1im1_result = findHistogram(p1im5)
-cv2.imshow('', p1im1_result)
+    newImage =  np.power(sourceImage / np.max(sourceImage), 1 / gamma)
+    return newImage
+
+
+# p1im1_result = findHistogram(p1im5)
+# cv2.imshow('', p1im1_result)
+# cv2.waitKey(5000)
+
+
+p1im2_result = correctGamma(p1im2, 1.5)
+cv2.imshow('', p1im2_result)
 cv2.waitKey(5000)
