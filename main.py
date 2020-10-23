@@ -102,7 +102,7 @@ secondDerivative = np.array([
 
 p1im1_result = histogramEqualization(p1im1)
 cv2.imshow('1', p1im1_result)
-cv2.waitKey(0)
+cv2.waitKey(1`0)
 
 p1im2_result = gammaCorrection(p1im2, 1.5)
 cv2.imshow('2', p1im2_result)
