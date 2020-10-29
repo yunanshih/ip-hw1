@@ -8,47 +8,35 @@ p1im4 = cv2.imread('./images/p1im4.png', cv2.IMREAD_COLOR)
 p1im5 = cv2.imread('./images/p1im5.png', cv2.IMREAD_COLOR)
 p1im6 = cv2.imread('./images/p1im6.png', cv2.IMREAD_GRAYSCALE)
 
-def gammaCorrection(image, gamma) :
-    newImage = np.power(image / np.max(image), 1 / gamma)
+def gammaCorrection(image, gamma):
+    newImage = np.power(image / np.max(image), gamma)
     return newImage
 
-def histogramEqualizationYCrCb(sourceImage) :
-    ycrcb = cv2.cvtColor(sourceImage, cv2.COLOR_BGR2YCR_CB)
+def histogramEqualizationYCrCb(image):
+    ycrcb = cv2.cvtColor(image, cv2.COLOR_BGR2YCR_CB)
     y, cr, cb = cv2.split(ycrcb)
     # Histogram processing: Applied only to the intensity component
-    image = y
-    height = image.shape[0]
-    width = image.shape[1]
-    histogram = np.zeros(256)
-
-    for i in range(height):
-        for j in range(width):
-            histogram[image[i , j]] += 1
-
-    cummulativeSum = np.zeros(256)
-    for i in range(len(histogram)):
-        if i == 0:
-            cummulativeSum[i] = histogram[i]
-        else:
-            cummulativeSum[i] = cummulativeSum[i - 1] + histogram[i]
-
-    normalized = np.zeros(256)
-    for i in range(len(normalized)):
-        normalized[i] = cummulativeSum[i] * 255 / cummulativeSum[255]
-
-    newImage = np.zeros_like(image)
-    for i in range(height):
-        for j in range(width):
-            newImage[i, j] = normalized[image[i,j]]
-    y = newImage
+    y = histogramEqualization(y)
     merged = cv2.merge((y, cr, cb))
     return cv2.cvtColor(merged, cv2.COLOR_YCR_CB2BGR)
 
-def histogramEqualizationHSV(sourceImage) :
-    hsv = cv2.cvtColor(sourceImage, cv2.COLOR_BGR2HSV)
+def histogramEqualizationHSV(image):
+    hsv = cv2.cvtColor(image, cv2.COLOR_BGR2HSV)
     h, s, v = cv2.split(hsv)
     # Histogram processing: Applied only to the intensity component
-    image = v
+    v = histogramEqualization(v)
+    merged = cv2.merge((h, s, v))
+    return cv2.cvtColor(merged, cv2.COLOR_HSV2BGR)
+
+def histogramEqualizationBGR(image):
+    b, g, r = cv2.split(image)
+    b = histogramEqualization(b)
+    g = histogramEqualization(g)
+    r = histogramEqualization(r)
+    merged = cv2.merge((b, g, r))
+    return merged
+
+def histogramEqualization(image):
     height = image.shape[0]
     width = image.shape[1]
     histogram = np.zeros(256)
@@ -72,11 +60,10 @@ def histogramEqualizationHSV(sourceImage) :
     for i in range(height):
         for j in range(width):
             newImage[i, j] = normalized[image[i,j]]
-    v = newImage
-    merged = cv2.merge((h, s, v))
-    return cv2.cvtColor(merged, cv2.COLOR_HSV2BGR)
+    return newImage
 
-def convolution2d(image, filter):
+
+def spatialFiltering(image, filter):
     height = image.shape[0]
     width = image.shape[1]
     b, g, r = cv2.split(image)
@@ -84,13 +71,13 @@ def convolution2d(image, filter):
     row, col = filter.shape
     if (row == col):
         border = int(row / 2)
-        b = convolution(b, height, width, border, filter, row)
-        g = convolution(g, height, width, border, filter, row)
-        r = convolution(r, height, width, border, filter, row)
+        b = filtering(b, height, width, border, filter, row)
+        g = filtering(g, height, width, border, filter, row)
+        r = filtering(r, height, width, border, filter, row)
         merged = cv2.merge((b, g, r))
     return merged
 
-def convolution(image, height, width, border, filter, row):
+def filtering(image, height, width, border, filter, row):
     newImage = np.zeros(image.shape)
     for i in range(border, height - border):
         for j in range(border, width - border):
@@ -128,62 +115,64 @@ def bilateralFilter(image, size, sigmaD, sigmaG):
             newImage[x][y] = newImage[x][y] / weight
     return np.uint8(newImage)
 
-def colorCorrectionHSV(sourceImage, hn, sn, vn):
-    hsv = cv2.cvtColor(sourceImage, cv2.COLOR_BGR2HSV)
-    h, s, v = cv2.split(hsv)
-    height = sourceImage.shape[0]
-    width = sourceImage.shape[1]
+def colorCorrectionBGR(image, bn, gn, rn):
+    b, g, r = cv2.split(image)
+    height = image.shape[0]
+    width = image.shape[1]
 
     for i in range(height):
         for j in range(width):
-            if h[i, j] + hn > 179:
-                h[i, j] = 179
-            elif h[i, j] + hn < 0:
-                h[i, j] = 0
+            if b[i, j] + bn > 255:
+                b[i, j] = 255
+            elif b[i, j] + bn < 0:
+                b[i, j] = 0
             else:
-                h[i, j] += hn
-            if s[i, j] + sn > 255:
-                s[i, j] = 255
-            elif s[i, j] + sn < 0:
-                s[i, j] = 0
+                b[i, j] += bn
+            if g[i, j] + gn > 255:
+                g[i, j] = 255
+            elif g[i, j] + gn < 0:
+                g[i, j] = 0
             else:
-                s[i, j] += sn
-            if v[i, j] + vn > 255:
-                v[i, j] = 179
-            elif v[i, j] + vn < 0:
-                v[i, j] = 0
+                g[i, j] += gn
+            if r[i, j] + rn > 255:
+                r[i, j] = 179
+            elif r[i, j] + rn < 0:
+                r[i, j] = 0
             else:
-                v[i, j] += vn
-            
-    merged = cv2.merge((h, s, v))
-    return cv2.cvtColor(merged, cv2.COLOR_HSV2BGR)
+                r[i, j] += rn
+    return cv2.merge((b, g, r))
 
-secondDerivative = np.array([
+sharpening = np.array([
     [0, -1, 0],
     [-1, 5, -1],
     [0, -1, 0],
 ])
 
-# p1im1_result = gammaCorrection(p1im1, 0.4)
-# cv2.imshow('1', p1im1_result)
-# cv2.waitKey(0)
+p1im1_result = gammaCorrection(p1im1, 2.3)
+cv2.imshow('1', p1im1_result)
+cv2.waitKey(0)
 
-# p1im2_result = gammaCorrection(p1im2, 1.7)
-# cv2.imshow('2', p1im2_result)
-# cv2.waitKey(0)
+p1im2_result = gammaCorrection(p1im2, 0.6)
+cv2.imshow('2', p1im2_result)
+cv2.waitKey(0)
 
-# p1im4_result = convolution2d(p1im4, secondDerivative)
-# cv2.imshow('4', p1im4_result)
-# cv2.waitKey(0)
+p1im3_result = colorCorrectionBGR(p1im3, 0, 0, -20)
+p1im3_result = gammaCorrection(p1im3_result, 2.4)
+cv2.imshow('3', p1im3_result)
+cv2.waitKey(0)
 
-# p1im5_result = histogramEqualizationYCrCb(p1im5)
-# cv2.imshow('5-1', p1im5_result)
-# cv2.waitKey(0)
+p1im4_result = spatialFiltering(p1im4, sharpening)
+cv2.imshow('4', p1im4_result)
+cv2.waitKey(0)
 
-# p1im5_result = histogramEqualizationHSV(p1im5)
-# cv2.imshow('5-2', p1im5_result)
-# cv2.waitKey(0)
+p1im5_result = histogramEqualizationYCrCb(p1im5)
+cv2.imshow('5', p1im5_result)
+cv2.waitKey(0)
 
-# p1im6_result = bilateralFilter(p1im6, 6, 50, 50)
-# cv2.imshow('6', p1im6_result)
-# cv2.waitKey(0)
+p1im5_result = histogramEqualizationBGR(p1im5)
+cv2.imshow('5', p1im5_result)
+cv2.waitKey(0)
+
+p1im6_result = bilateralFilter(p1im6, 9, 100, 100)
+cv2.imshow('6', p1im6_result)
+cv2.waitKey(0)
